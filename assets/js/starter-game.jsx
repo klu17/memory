@@ -55,11 +55,14 @@ class Memory extends React.Component {
         var copy = _.cloneDeep(this.state);
         copy.tiles[ii].hiddenHuh = false;
 
+        if (copy.tiles[ii].completeHuh) {
+            return;
+        }
+
         if(this.state.clicked.length == 0) {
             copy.clicked.push(copy.tiles[ii]);
             copy.numClicks++;
             this.setState(copy);
-           // console.log("a");
         } else if (this.state.clicked.length == 1 && !_.isEqual(this.state.clicked[0], this.state.tiles[ii])){
             copy.clicked.push(copy.tiles[ii]);
             if(this.state.clicked[0].value == this.state.tiles[ii].value){ //match!
@@ -119,47 +122,4 @@ class Memory extends React.Component {
     
 }
 
-/**
-export default function game_init(root) {
-  ReactDOM.render(<Starter />, root);
-}
-
-class Starter extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { left: false };
-  }
-
-  swap(_ev) {
-    let state1 = _.assign({}, this.state, { left: !this.state.left });
-    this.setState(state1);
-  }
-
-  hax(_ev) {
-    alert("hax!");
-  }
-
-  render() {
-    let button = <div className="column" onMouseMove={this.swap.bind(this)}>
-      <p><button onClick={this.hax.bind(this)}>Click Me</button></p>
-    </div>;
-
-    let blank = <div className="column">
-      <p>Nothing here.</p>
-    </div>;
-
-    if (this.state.left) {
-      return <div className="row">
-        {button}
-        {blank}
-      </div>;
-    }
-    else {
-      return <div className="row">
-        {blank}
-        {button}
-      </div>;
-    }
-  }
-}**/
 
