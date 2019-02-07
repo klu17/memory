@@ -2,97 +2,57 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import _ from 'lodash';
 
-export default function game_init(root) {
-    ReactDOM.render(<Memory />, root);
+export default function game_init(root, channel) {
+    ReactDOM.render(<Memory channel={channel} />, root);
 }
 
 class Memory extends React.Component {
     constructor(props) {
         super(props);
+        this.channel = props.channel;
         this.state = {
             tiles: [],
             numClicks: 0,
             numMatches: 0,
-            clicked: [],
+            shownTiles: {}
         };
-        let values = "AABBCCDDEEFFGGHH";
-        let sortedTiles = values.split("").map(this.createTile.bind(this));
-        this.state.tiles = this.shuffle(sortedTiles);
+
+        this.channel.join()
+            .receive("ok", resp => {
+                console.log("Joined successfully", resp);
+                this.setState(resp.game);
+                setTimeout(this.clearClicked.bind(this, resp.game.shownTiles), 1500);
+            })
+            .receive("error", resp => { console.log("Unable to join", resp); });
     }
 
-    resetClick(ev) {
-        var newState = { tiles: [], numClicks: 0, numMatches: 0, clicked: []};
-        let values = "AABBCCDDEEFFGGHH";
-        let sortedTiles = values.split("").map(this.createTile.bind(this));
-        newState.tiles = this.shuffle(sortedTiles);
-        this.setState(newState);
-    }
-
-
-    shuffle(src) {
-        let dest = [];
-        while(src.length > 0) {
-            let idx = Math.floor(Math.random() * src.length);
-            dest.push(src.splice(idx, 1)[0]);
-        }
-        return dest;
-    }
-
-    createTile(letter) {
-        return {hiddenHuh: true, value: letter, completeHuh: false};
-    }
-    
-    clearClicked(copy, ii, ev) {
-        copy.numClicks = this.state.numClicks;
-        copy.numMatches = this.state.numMatches;
-        copy.tiles[ii].hiddenHuh = true;
-        copy.clicked[0].hiddenHuh = true;
-        copy.clicked = [];
-        this.setState(copy);
+    reset(ev) {
+        this.channel.push("reset", {})
+            .receive("ok", (resp) => {this.setState(resp.game);});
     }
 
     tileClick(ii, ev) {
-        var copy = _.cloneDeep(this.state);
-        copy.tiles[ii].hiddenHuh = false;
-
-        if (copy.tiles[ii].completeHuh) {
-            return;
+        this.channel.push("tileClick", {tileNum: ii})
+            .receive("ok", (resp) => {this.setState(resp.game);setTimeout(this.clearClicked.bind(this, resp.game.shownTiles), 1500);});
+    }
+    
+    clearClicked(tiles) {
+        if (_.isEqual(this.state.shownTiles, tiles)) {
+            this.setState({shownTiles: []});
         }
-
-        if(this.state.clicked.length == 0) {
-            copy.clicked.push(copy.tiles[ii]);
-            copy.numClicks++;
-            this.setState(copy);
-        } else if (this.state.clicked.length == 1 && !_.isEqual(this.state.clicked[0], this.state.tiles[ii])){
-            copy.clicked.push(copy.tiles[ii]);
-            if(this.state.clicked[0].value == this.state.tiles[ii].value){ //match!
-                copy.numMatches++;
-                copy.numClicks++;
-                this.setState(copy);
-                copy = _.cloneDeep(this.state);
-                if(!(copy.tiles[ii].completeHuh && copy.clicked[0].completeHuh)){
-                    copy.tiles[ii].completeHuh = true;
-                    copy.clicked[0].completeHuh = true;
-                }
-                setTimeout(()=>{this.clearClicked(copy, ii, ev);}, 600);
-            } else {
-                copy.numClicks++;
-                this.setState(copy);
-                setTimeout(()=>{this.clearClicked(copy, ii, ev);}, 600);
-            }
-        } 
-        console.log({copy});
     }
 
 
     render() {
         let tile_list = _.map(this.state.tiles, (tile, ii) => {
-            if(tile.completeHuh) {
+            if (ii in this.state.shownTiles) {
+                return <button className="button button-outline memory-button" onClick={this.tileClick.bind(this, ii)} key={ii}>{this.state.shownTiles[ii]}</button>;
+            } else if(tile == "*") {
                 return <button className="button button-clear memory-button" onClick={this.tileClick.bind(this, ii)} key={ii}>&nbsp;</button>;
-            }else if(!tile.hiddenHuh) {
-                return <button className="button button-outline memory-button" onClick={this.tileClick.bind(this, ii)} key={ii}>{tile.value}</button>;
-            } else if(tile.hiddenHuh){
+            }else if(tile == " ") {
                 return <button className="button memory-button" onClick={this.tileClick.bind(this, ii)} key={ii}>&nbsp;</button>;
+            } else {
+                return <button className="button button-outline memory-button" onClick={this.tileClick.bind(this, ii)} key={ii}>{tile}</button>;
             }
         });
         if(this.state.numMatches == 8) {
@@ -100,7 +60,7 @@ class Memory extends React.Component {
                 <div>
                     <div>Score: {this.state.numClicks}</div>
                     <div>Game Over! Your final score is {this.state.numClicks}!</div>
-                    <button class="reset" onClick={this.resetClick.bind(this)}>Reset</button>
+                    <button id="reset" onClick={this.reset.bind(this)}>Reset</button>
                 </div>
             );
         } else {
@@ -113,7 +73,7 @@ class Memory extends React.Component {
                     <div>{tile_list.slice(4,8)}</div>
                     <div>{tile_list.slice(8,12)}</div>
                     <div>{tile_list.slice(12,16)}</div>
-                    <button class="reset" onClick={this.resetClick.bind(this)}>Reset</button>
+                    <button id="reset" onClick={this.reset.bind(this)}>Reset</button>
                 </div>
             );
         }
