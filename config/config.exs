@@ -21,7 +21,7 @@ end
 # Configures the endpoint
 config :memory, MemoryWeb.Endpoint,
   url: [host: "localhost"],
-  secret_key_base: get_secret.("key_base");
+  secret_key_base: get_secret.("key_base"),
   render_errors: [view: MemoryWeb.ErrorView, accepts: ~w(html json)],
   pubsub: [name: Memory.PubSub,
            adapter: Phoenix.PubSub.PG2]
